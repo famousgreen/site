@@ -1811,7 +1811,7 @@ textarea:focus-visible {
 
 .hours-card h3 {
   margin: 4px 0 20px;
-  font-family: Georgia, serif;
+  font-family: 'Inter Variable', Arial, sans-serif;
   font-size: 25px;
   font-weight: 400;
 }
@@ -1896,7 +1896,7 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 50%;
   background: var(--pink);
-  font-family: Georgia, serif;
+  font-family: 'Inter Variable', Arial, sans-serif;
   font-size: 10px;
   font-style: normal;
 }
