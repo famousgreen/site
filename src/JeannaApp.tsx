@@ -13,7 +13,6 @@ import {
   Heart,
   Home,
   Image as ImagesIcon,
-  Instagram,
   LayoutDashboard,
   LockKeyhole,
   Mail,
@@ -289,7 +288,7 @@ export default function JeannaApp() {
   const chooseLanguage = (nextLanguage: Language) => {
     setLanguage(nextLanguage)
     window.localStorage.setItem('jeanna-language', nextLanguage)
-    document.documentElement.lang = nextLanguage
+    document.documentElement.setAttribute('lang', nextLanguage)
     setLanguageOpen(false)
   }
 
@@ -300,7 +299,7 @@ export default function JeannaApp() {
         <nav aria-label="Liens utiles">
           <a href="#privacy">{copy.privacy}</a>
           <a href="#terms">{copy.terms}</a>
-          <a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram />{copy.instagram}</a>
+          <a href="https://instagram.com" target="_blank" rel="noreferrer"><span aria-hidden="true">@</span>{copy.instagram}</a>
         </nav>
       </div>
       <header className="topbar">
@@ -586,7 +585,7 @@ function ClientExperience({
           <nav>
             <a id="privacy" href="#privacy">{copy.privacy}</a>
             <a id="terms" href="#terms">{copy.terms}</a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram />{copy.instagram}</a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer"><span aria-hidden="true">@</span>{copy.instagram}</a>
           </nav>
           <small>© 2026 Jeanna K · Nail & lash studio</small>
         </footer>
