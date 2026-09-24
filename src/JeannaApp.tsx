@@ -297,6 +297,7 @@ export default function JeannaApp() {
     window.localStorage.setItem('jeanna-language', nextLanguage)
     document.documentElement.setAttribute('lang', nextLanguage)
     setLanguageOpen(false)
+    setMenuOpen(false)
   }
 
   return (
