@@ -3177,3 +3177,208 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Overlay safety contract: every popup must stay inside narrow mobile viewports. */
+html,
+body,
+#root,
+.app-shell {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+[data-slot='dialog-overlay'] {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100dvw;
+  height: 100dvh;
+  background: rgba(16, 24, 40, 0.34) !important;
+  overscroll-behavior: contain;
+}
+
+[data-slot='dialog-content'] {
+  --dialog-safe-gap: 12px;
+  --dialog-max-width: 480px;
+  position: fixed !important;
+  inset: auto !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: min(var(--dialog-max-width), calc(100dvw - (var(--dialog-safe-gap) * 2))) !important;
+  min-width: 0 !important;
+  max-width: calc(100dvw - (var(--dialog-safe-gap) * 2)) !important;
+  max-height: calc(100dvh - (var(--dialog-safe-gap) * 2)) !important;
+  margin: 0 !important;
+  padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  transform: translate(-50%, -50%) !important;
+  scrollbar-gutter: stable;
+}
+
+.language-dialog {
+  --dialog-max-width: 480px;
+}
+
+.booking-dialog {
+  --dialog-max-width: 520px;
+}
+
+[data-slot='dialog-content'] > *,
+.booking-service-list > button > div,
+.extras-select button,
+.payment-grid button,
+.booking-summary > div > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.booking-service-list strong,
+.booking-service-list small,
+.extras-select button,
+.payment-grid span,
+.booking-summary strong,
+[data-slot='dialog-title'],
+[data-slot='dialog-description'] {
+  overflow-wrap: anywhere;
+}
+
+.booking-dialog .dialog-topline {
+  position: sticky;
+  z-index: 5;
+  top: -1px;
+  margin: -2px -2px 0;
+  padding: 2px;
+  background: #fff;
+}
+
+.booking-dialog .dialog-actions,
+.booking-dialog > .booking-next,
+.booking-dialog > .booking-confirm {
+  position: sticky !important;
+  z-index: 6;
+  bottom: calc(-1 * max(20px, env(safe-area-inset-bottom)));
+  margin-right: -20px;
+  margin-bottom: calc(-1 * max(20px, env(safe-area-inset-bottom)));
+  margin-left: -20px;
+  padding: 12px 20px max(20px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
+}
+
+.booking-dialog > .booking-next,
+.booking-dialog > .booking-confirm {
+  width: calc(100% + 40px);
+  border-radius: 0 0 20px 20px !important;
+}
+
+.booking-dialog > .back-link {
+  flex: none;
+  margin-bottom: 4px;
+}
+
+.toast {
+  right: auto;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100dvw - 24px);
+  min-height: 42px;
+  padding:
+    11px 16px
+    max(11px, env(safe-area-inset-bottom));
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 760px) {
+  [data-slot='dialog-content'] {
+    --dialog-safe-gap: 8px;
+    border-radius: 20px !important;
+    scrollbar-gutter: auto;
+  }
+
+  .booking-dialog,
+  .language-dialog {
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    width: calc(100dvw - 16px) !important;
+    max-width: calc(100dvw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .booking-dialog [data-slot='dialog-title'],
+  .language-dialog [data-slot='dialog-title'] {
+    padding-right: 32px;
+    font-size: clamp(24px, 8vw, 30px);
+    line-height: 1.08;
+  }
+
+  .booking-dialog [data-slot='dialog-close'] {
+    top: 10px !important;
+    right: 10px !important;
+    z-index: 10;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+
+  .extras-select {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .extras-select button {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 350px) {
+  [data-slot='dialog-content'] {
+    --dialog-safe-gap: 6px;
+    padding: 16px !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .booking-dialog,
+  .language-dialog {
+    width: calc(100dvw - 12px) !important;
+    max-width: calc(100dvw - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+  }
+
+  .booking-dialog .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-right: -16px;
+    margin-left: -16px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .booking-dialog .dialog-actions .primary-button {
+    width: 100%;
+    min-width: 0;
+    grid-row: 1;
+  }
+
+  .booking-dialog .dialog-actions [data-slot='button'] {
+    width: 100%;
+  }
+
+  .booking-dialog > .booking-next,
+  .booking-dialog > .booking-confirm {
+    width: calc(100% + 32px);
+    margin-right: -16px;
+    margin-left: -16px;
+    padding-right: 16px !important;
+    padding-left: 16px !important;
+  }
+
+  .drink-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

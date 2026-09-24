@@ -55,10 +55,17 @@ const works = [
 ]
 
 const services = [
-  { id: 'manicure', name: 'Manucure + gel', time: '2 h', price: 4200, accent: '01' },
-  { id: 'lashes', name: 'Rehaussement de cils', time: '1 h 30', price: 3500, accent: '02' },
-  { id: 'express', name: 'Manucure express', time: '1 h', price: 2500, accent: '03' },
+  { id: 'manicure', name: 'Manucure + gel', time: '2 h', price: 55, accent: '01' },
+  { id: 'lashes', name: 'Rehaussement de cils', time: '1 h 30', price: 48, accent: '02' },
+  { id: 'express', name: 'Manucure express', time: '1 h', price: 35, accent: '03' },
 ]
+
+const formatEuro = (value: number) =>
+  new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(value)
 
 const appointments = [
   { id: 1, time: '10:00', client: 'Aline S.', service: 'Manucure + gel', duration: '2 h', color: 'lime' },
@@ -536,7 +543,7 @@ function ClientExperience({
             <div className="service-grid">
               {services.map((service) => (
                 <button key={service.id} className="service-card" onClick={() => startBooking(service.id)}>
-                  <span>{service.accent}</span><div><h3>{serviceNames[language][service.id]}</h3><p>{service.time} · {service.price.toLocaleString('fr-FR')} ₽</p></div><ArrowRight />
+                  <span>{service.accent}</span><div><h3>{serviceNames[language][service.id]}</h3><p>{service.time} · {formatEuro(service.price)}</p></div><ArrowRight />
                 </button>
               ))}
             </div>
@@ -571,7 +578,7 @@ function ClientExperience({
               </div>
               <div className="profile-card">
                 <div className="card-title"><div><Repeat2 /><span><strong>{copy.history}</strong><small>{copy.visits}</small></span></div><ChevronRight /></div>
-                <div className="mini-stat"><strong>32 400 ₽</strong><span>{copy.totalYear}</span></div>
+                <div className="mini-stat"><strong>{copy.visits}</strong><span>{copy.history}</span></div>
               </div>
               <div className="profile-card dark-card">
                 <div className="card-title"><div><Heart /><span><strong>{copy.references}</strong><small>{liked.length}</small></span></div><ChevronRight /></div>
@@ -671,7 +678,7 @@ function AdminExperience({
             <div className="admin-heading"><div><span>Mercredi 23 septembre</span><h1>Bonjour, Jeanna</h1></div><Button className="primary-button" onClick={() => setTab('calendar')}><CalendarDays /> Ouvrir l’agenda</Button></div>
             <div className="stats-grid">
               <StatCard icon={<CalendarDays />} label="Rendez-vous aujourd’hui" value="3" note="+1 depuis mercredi dernier" />
-              <StatCard icon={<CreditCard />} label="Chiffre de la semaine" value="48 600 ₽" note="+12% cette semaine" />
+              <StatCard icon={<CreditCard />} label="Chiffre de la semaine" value={formatEuro(1240)} note="+12% cette semaine" />
               <StatCard icon={<UsersRound />} label="Clientes fidèles" value="78%" note="24 clientes actives" />
               <StatCard icon={<Clock3 />} label="Taux d’occupation" value="84%" note="5 h 30 disponibles" />
             </div>
@@ -732,7 +739,7 @@ function AdminExperience({
             <div className="client-table">
               <div className="table-head"><span>Cliente</span><span>Dernière visite</span><span>Visites</span><span>Total</span><span /></div>
               {['Anna Martin', 'Aline Simon', 'Marie Kim', 'Sacha Volkov'].map((name, index) => (
-                <button key={name}><span className="client-name"><i>{name.split(' ').map((part) => part[0]).join('')}</i><b>{name}<small>+33 6 24 {index}8 04 2{index}</small></b></span><span>{index + 12} septembre</span><span>{8 - index}</span><span>{(32400 - index * 4200).toLocaleString('fr-FR')} ₽</span><ChevronRight /></button>
+                <button key={name}><span className="client-name"><i>{name.split(' ').map((part) => part[0]).join('')}</i><b>{name}<small>+33 6 24 {index}8 04 2{index}</small></b></span><span>{index + 12} septembre</span><span>{8 - index}</span><span>{formatEuro(640 - index * 90)}</span><ChevronRight /></button>
               ))}
             </div>
           </section>
@@ -741,8 +748,8 @@ function AdminExperience({
         {tab === 'services' && (
           <section className="admin-page">
             <div className="admin-heading"><div><span>Prestations et durées</span><h1>Carte des soins</h1></div><Button className="primary-button" onClick={() => notify('Nouvelle prestation ajoutée au brouillon')}><Plus /> Ajouter</Button></div>
-            <div className="service-admin-grid">{services.map((service, index) => <article key={service.id}><img src={works[index % works.length].src} alt="" /><div><span>Active</span><h3>{service.name}</h3><p>{service.time} · {service.price.toLocaleString('fr-FR')} ₽</p></div><button><Settings2 /></button></article>)}</div>
-            <section className="admin-panel extras-panel"><div className="panel-heading"><div><span className="section-label">Options</span><h2>Prestations complémentaires</h2></div></div>{['Dépose extérieure · 500 ₽ · 30 min', 'Renforcement · 700 ₽ · 30 min', 'Nail art · 150 ₽ · 10 min'].map((extra) => <label key={extra}><span>{extra}</span><Switch defaultChecked /></label>)}</section>
+            <div className="service-admin-grid">{services.map((service, index) => <article key={service.id}><img src={works[index % works.length].src} alt="" /><div><span>Active</span><h3>{service.name}</h3><p>{service.time} · {formatEuro(service.price)}</p></div><button><Settings2 /></button></article>)}</div>
+            <section className="admin-panel extras-panel"><div className="panel-heading"><div><span className="section-label">Options</span><h2>Prestations complémentaires</h2></div></div>{['Dépose extérieure · 8 € · 30 min', 'Renforcement · 12 € · 30 min', 'Nail art · 5 € · 10 min'].map((extra) => <label key={extra}><span>{extra}</span><Switch defaultChecked /></label>)}</section>
           </section>
         )}
 
@@ -837,7 +844,7 @@ function BookingDialog({
   finish: () => void
 }) {
   const service = services.find((item) => item.id === selectedService) ?? services[0]
-  const total = service.price + extras.length * 500
+  const total = service.price + extras.length * 8
   const currentPhotoInput = useRef<HTMLInputElement>(null)
   const referenceInput = useRef<HTMLInputElement>(null)
   const drinkLabel = drinkOptions.find((item) => item.id === drink)?.labels[language] ?? drinkOptions[0].labels[language]
@@ -857,8 +864,8 @@ function BookingDialog({
         {step === 0 && (
           <>
             <DialogHeader><DialogTitle>{copy.selectService}</DialogTitle><DialogDescription>{copy.serviceHelp}</DialogDescription></DialogHeader>
-            <div className="booking-service-list">{services.map((item) => <button key={item.id} className={selectedService === item.id ? 'selected' : ''} onClick={() => setSelectedService(item.id)}><span>{item.accent}</span><div><strong>{serviceNames[language][item.id]}</strong><small>{item.time} · {item.price.toLocaleString('fr-FR')} ₽</small></div>{selectedService === item.id && <Check />}</button>)}</div>
-            <div className="extras-select"><span>{copy.addOns}</span>{['removal', 'strengthening', 'nailArt'].map((extra) => <button className={extras.includes(extra) ? 'selected' : ''} onClick={() => toggleExtra(extra)} key={extra}>{extras.includes(extra) ? <Check /> : <Plus />}{extrasLabels[extra]}<small>+500 ₽</small></button>)}</div>
+            <div className="booking-service-list">{services.map((item) => <button key={item.id} className={selectedService === item.id ? 'selected' : ''} onClick={() => setSelectedService(item.id)}><span>{item.accent}</span><div><strong>{serviceNames[language][item.id]}</strong><small>{item.time} · {formatEuro(item.price)}</small></div>{selectedService === item.id && <Check />}</button>)}</div>
+            <div className="extras-select"><span>{copy.addOns}</span>{['removal', 'strengthening', 'nailArt'].map((extra) => <button className={extras.includes(extra) ? 'selected' : ''} onClick={() => toggleExtra(extra)} key={extra}>{extras.includes(extra) ? <Check /> : <Plus />}{extrasLabels[extra]}<small>+8 €</small></button>)}</div>
             <Button className="primary-button booking-next" onClick={() => setStep(1)}>{copy.next} <ArrowRight /></Button>
           </>
         )}
@@ -905,7 +912,7 @@ function BookingDialog({
               <div><span>{copy.drink}</span><strong>{drinkLabel}</strong></div>
               <div><span>{copy.payment}</span><strong>{paymentLabels[payment]}</strong></div>
               <div><span>{copy.extras}</span><strong>{extras.length ? extras.map((item) => extrasLabels[item]).join(', ') : copy.none}</strong></div>
-              <div className="summary-total"><span>{copy.total}</span><strong>{total.toLocaleString('fr-FR')} ₽</strong></div>
+              <div className="summary-total"><span>{copy.total}</span><strong>{formatEuro(total)}</strong></div>
             </div>
             <Button className="primary-button booking-confirm" onClick={finish}>{copy.confirm} <Check /></Button>
             <button className="back-link" onClick={() => setStep(3)}>{copy.edit}</button>
