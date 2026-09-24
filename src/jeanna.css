@@ -3212,6 +3212,8 @@ body,
   overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
+  translate: none !important;
+  scale: 1 !important;
   transform: translate(-50%, -50%) !important;
   scrollbar-gutter: stable;
 }
