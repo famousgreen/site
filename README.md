@@ -14,14 +14,26 @@ Mobile-first демонстрационный сервис мастера ног
 - настройки оплаты, длительностей и email-напоминаний;
 - адаптивная вёрстка для мобильных, планшетов и desktop.
 
-## Запуск
+## Локальный запуск из GitHub
 
 Требуется Node.js 20+.
 
 ```bash
+git clone https://github.com/famousgreen/site.git
+cd site
 npm install
-npm run dev -- --host 0.0.0.0 --port 43127
+npm run dev
 ```
+
+Сайт откроется на `http://localhost:5173/`.
+
+Сборка для сервера:
+
+```bash
+npm run build
+```
+
+Готовые файлы будут в папке `dist/`. Публикация на GitHub Pages идёт автоматически после пуша в `main`.
 
 Проверки:
 
