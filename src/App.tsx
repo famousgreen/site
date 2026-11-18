@@ -1,70 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { ArrowRight, ArrowUpRight, Check, Menu, X } from 'lucide-react'
+import { LANGS, dictionary, detectLanguage, saveLanguage } from './i18n'
+import type { Dict, Lang, ShootType } from './i18n'
 import './App.css'
 
-type ShootType = 'portrait' | 'wedding' | 'commercial'
 type ContactMethod = 'instagram' | 'email' | 'telegram' | 'whatsapp'
 
-const shoots: Array<{
-  id: ShootType
-  index: string
-  title: string
-  word: string
-  place: string
-  image: string
-  detail: string
-  description: string
-  points: string[]
-}> = [
-  {
-    id: 'portrait',
-    index: '01',
-    title: 'Обычная съёмка',
-    word: 'Портрет',
-    place: 'Paris · 48.8566° N',
-    image: '/images/portfolio/portrait-paris.jpg',
-    detail: '/images/portfolio/hero-paris.jpg',
-    description:
-      'Для тех, кто хочет увидеть себя без придуманной роли. Выбираем маршрут вместе и снимаем так, чтобы в кадре остался ваш ритм.',
-    points: ['2 часа в городе', 'Подбор локаций и света', 'Готовая серия в галерее'],
-  },
-  {
-    id: 'wedding',
-    index: '02',
-    title: 'Свадебная съёмка',
-    word: 'Свадьба',
-    place: 'Normandie · 49.7072° N',
-    image: '/images/portfolio/wedding-normandy.jpg',
-    detail: '/images/portfolio/portrait-paris.jpg',
-    description:
-      'Не режиссирую чувства — замечаю их. Собираю день в живую последовательность: ветер, объятия, детали и люди рядом.',
-    points: ['От утра до первого танца', 'Репортаж и портреты пары', 'Единая история, а не набор кадров'],
-  },
-  {
-    id: 'commercial',
-    index: '03',
-    title: 'Коммерческая съёмка',
-    word: 'Бренд',
-    place: 'Île-de-France · 48.8589° N',
-    image: '/images/portfolio/commercial-france.jpg',
-    detail: '/images/portfolio/wedding-normandy.jpg',
-    description:
-      'Перевожу характер бренда в визуальный язык: от идеи и референсов до серии для сайта, кампании и соцсетей.',
-    points: ['Бриф и визуальная концепция', 'Предметная и людская съёмка', 'Файлы под сайт и печать'],
-  },
+const shootOrder: Array<{ id: ShootType; index: string; place: string }> = [
+  { id: 'portrait', index: '01', place: '48.8566° N' },
+  { id: 'wedding', index: '02', place: '49.7072° N' },
+  { id: 'commercial', index: '03', place: '48.8589° N' },
 ]
 
-const steps = [
-  ['01', 'Пишете мне', 'Короткая заявка: формат, дата и удобный мессенджер'],
-  ['02', 'Обсуждаем', 'Уточняем идею, место и настроение, подбираем время'],
-  ['03', 'Снимаем', 'Работаю спокойно и без постановочных поз'],
+const photos = [
+  { src: '/images/portfolio/portrait-paris.jpg', caption: '48.8566° N · 2.3522° E', position: '50% 40%' },
+  { src: '/images/portfolio/hero-paris.jpg', caption: 'Paris', position: '64% 50%' },
+  { src: '/images/portfolio/commercial-france.jpg', caption: 'Normandie', position: '50% 50%' },
+  { src: '/images/portfolio/wedding-normandy.jpg', caption: '49.7072° N · 0.2° E', position: '40% 50%' },
 ]
 
 const methods: Array<{ id: ContactMethod; label: string; placeholder: string }> = [
   { id: 'instagram', label: 'Instagram', placeholder: '@username' },
   { id: 'email', label: 'Email', placeholder: 'name@example.com' },
-  { id: 'telegram', label: 'Telegram', placeholder: '@username или телефон' },
+  { id: 'telegram', label: 'Telegram', placeholder: '@username' },
   { id: 'whatsapp', label: 'WhatsApp', placeholder: '+33 6 00 00 00 00' },
 ]
 
@@ -95,10 +54,43 @@ function Reveal({ children, className = '' }: { children: ReactNode; className?:
   )
 }
 
+function LanguageSwitch({ lang, label, onChange }: { lang: Lang; label: string; onChange: (lang: Lang) => void }) {
+  return (
+    <div className="lang-switch" role="group" aria-label={label}>
+      {LANGS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          lang={item.id}
+          aria-label={item.name}
+          aria-pressed={lang === item.id}
+          className={lang === item.id ? 'active' : ''}
+          onClick={() => onChange(item.id)}
+        >
+          {item.short}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function App() {
+  const [lang, setLang] = useState<Lang>(detectLanguage)
   const [menuOpen, setMenuOpen] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(false)
   const [bookingShoot, setBookingShoot] = useState<ShootType>('portrait')
+  const t = dictionary[lang]
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+    document.title = t.title
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t.description)
+  }, [lang, t])
+
+  const changeLanguage = (next: Lang) => {
+    saveLanguage(next)
+    setLang(next)
+  }
 
   const openBooking = (shoot: ShootType = 'portrait') => {
     setBookingShoot(shoot)
@@ -107,181 +99,137 @@ function App() {
 
   return (
     <div className="portfolio">
+      <a className="skip-link" href="#main">{t.skip}</a>
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Наверх">
-          A. Moreau
+        <a className="wordmark" href="#top" aria-label="Hanna Chauvat">
+          H. Chauvat
         </a>
-        <nav className="desktop-nav" aria-label="Основная навигация">
-          <a href="#work">Работы</a>
-          <a href="#process">Процесс</a>
-          <button type="button" onClick={() => openBooking()}>
-            Забронировать
+        <div className="header-tools">
+          <LanguageSwitch lang={lang} label={t.langLabel} onChange={changeLanguage} />
+          <nav className="desktop-nav" aria-label="Main">
+            <a href="#work">{t.nav.work}</a>
+            <button type="button" onClick={() => openBooking()}>
+              {t.nav.book}
+            </button>
+          </nav>
+          <button
+            className="menu-toggle"
+            type="button"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            aria-label={menuOpen ? t.menu.close : t.menu.open}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
-        </nav>
-        <button
-          className="menu-toggle"
-          type="button"
-          onClick={() => setMenuOpen((value) => !value)}
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </button>
+        </div>
       </header>
 
       {menuOpen && (
-        <nav className="mobile-menu" aria-label="Мобильная навигация">
-          <a href="#work" onClick={() => setMenuOpen(false)}>Работы</a>
-          <a href="#process" onClick={() => setMenuOpen(false)}>Процесс</a>
+        <nav className="mobile-menu" id="mobile-menu" aria-label="Main">
+          <a href="#work" onClick={() => setMenuOpen(false)}>{t.nav.work}</a>
           <button type="button" onClick={() => { setMenuOpen(false); openBooking() }}>
-            Забронировать <ArrowRight />
+            {t.nav.book} <ArrowRight aria-hidden="true" />
           </button>
         </nav>
       )}
 
-      <main>
+      <main id="main">
         <section className="hero" id="top">
-          <p className="hero-kicker">
-            <span>Photographe</span>
-            <span>Paris / Normandie</span>
-          </p>
-          <h1 aria-label="Alina Moreau">
-            <span className="line"><span>Alina</span></span>
-            <span className="line"><span>Moreau</span></span>
+          <div className="hero-meta">
+            <span>{t.hero.role}</span>
+            <span>{t.hero.place}</span>
+            <span>{t.hero.year}</span>
+          </div>
+          <h1 aria-label="Hanna Chauvat">
+            <span className="line" aria-hidden="true"><span>Hanna</span></span>
+            <span className="line" aria-hidden="true"><span>Chauvat</span></span>
           </h1>
-          <div className="hero-collage">
-            <figure className="hero-photo hero-photo-main">
-              <img src="/images/portfolio/portrait-paris.jpg" alt="Портрет на парижской улице" />
-            </figure>
-            <figure className="hero-photo hero-photo-wide">
-              <img src="/images/portfolio/hero-paris.jpg" alt="Прогулка у набережной в утреннем Париже" />
-            </figure>
-            <div className="hero-note">
-              <p>Живые фотографии о людях, близости и брендах — во Франции и там, где начинается ваша история</p>
-              <button type="button" onClick={() => openBooking()}>
-                Выбрать дату <ArrowUpRight />
-              </button>
-            </div>
-            <span className="hero-index">N° 2026</span>
+          <div className="hero-intro">
+            <h2>{t.hero.manifest}</h2>
+            <button type="button" onClick={() => openBooking()}>
+              {t.hero.cta} <ArrowUpRight aria-hidden="true" />
+            </button>
+          </div>
+          <div className="photo-grid">
+            {photos.map((photo, i) => (
+              <figure className={`photo photo-${i + 1}`} key={photo.src}>
+                <img src={photo.src} alt={t.hero.alts[i]} style={{ objectPosition: photo.position }} />
+                <figcaption>{photo.caption}</figcaption>
+              </figure>
+            ))}
           </div>
         </section>
 
-        <section className="statement" id="approach">
-          <Reveal>
-            <p className="label">[ Подход ]</p>
-            <h2>
-              Я не прошу вести себя естественно. Я создаю пространство, в котором{' '}
-              <em>можно не играть</em>
-            </h2>
-          </Reveal>
-        </section>
-
-        <section className="work" id="work">
-          <Reveal className="work-heading">
-            <p className="label">[ Три формата ]</p>
-            <h2>Выберите свою историю</h2>
-          </Reveal>
-
-          {shoots.map((shoot, i) => (
-            <article className={`shoot ${i % 2 ? 'shoot-flip' : ''}`} key={shoot.id}>
-              <Reveal className="shoot-visual">
-                <figure className="shoot-main">
-                  <img src={shoot.image} alt={shoot.title} loading="lazy" />
-                </figure>
-                <figure className="shoot-detail">
-                  <img src={shoot.detail} alt="" loading="lazy" />
-                </figure>
-                <span className="shoot-place">{shoot.place}</span>
-              </Reveal>
-              <Reveal className="shoot-copy">
-                <span className="shoot-index">{shoot.index}</span>
-                <h3>{shoot.word}</h3>
-                <p className="shoot-name">{shoot.title}</p>
-                <p className="shoot-description">{shoot.description}</p>
-                <ul>
-                  {shoot.points.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-                <button type="button" onClick={() => openBooking(shoot.id)}>
-                  Обсудить съёмку <ArrowRight />
-                </button>
-              </Reveal>
-            </article>
-          ))}
-        </section>
-
-        <section className="frames" aria-label="Избранные кадры">
-          <Reveal className="frames-grid">
-            <img src="/images/portfolio/wedding-normandy.jpg" alt="" loading="lazy" />
-            <img src="/images/portfolio/commercial-france.jpg" alt="" loading="lazy" />
-            <img src="/images/portfolio/portrait-paris.jpg" alt="" loading="lazy" />
-            <img src="/images/portfolio/hero-paris.jpg" alt="" loading="lazy" />
-          </Reveal>
-        </section>
-
-        <section className="process" id="process">
-          <Reveal>
-            <p className="label">[ Как это работает ]</p>
-            <h2>Три шага до съёмки</h2>
-            <ol>
-              {steps.map(([n, title, text]) => (
-                <li key={n}>
-                  <span>{n}</span>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Reveal>
+        <section className="work" id="work" aria-labelledby="work-title">
+          <h2 className="label" id="work-title">{t.workLabel}</h2>
+          <ul>
+            {shootOrder.map((shoot) => (
+              <li key={shoot.id}>
+                <Reveal>
+                  <button type="button" className="shoot-row" onClick={() => openBooking(shoot.id)}>
+                    <span className="shoot-index">{shoot.index}</span>
+                    <span className="shoot-title">{t.shoots[shoot.id].name}</span>
+                    <span className="shoot-desc">{t.shoots[shoot.id].desc}</span>
+                    <span className="shoot-place">{shoot.place}</span>
+                    <ArrowUpRight className="shoot-arrow" aria-hidden="true" />
+                  </button>
+                </Reveal>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="closing">
           <Reveal>
-            <h2>
-              История уже происходит.
-              <br />
-              <em>Давайте её сохраним</em>
-            </h2>
+            <h2>{t.closing.title}</h2>
             <button type="button" onClick={() => openBooking()}>
-              Забронировать съёмку <ArrowUpRight />
+              {t.closing.cta} <ArrowUpRight aria-hidden="true" />
             </button>
           </Reveal>
         </section>
       </main>
 
       <footer>
-        <strong>ALINA MOREAU</strong>
+        <strong>HANNA CHAUVAT</strong>
         <div>
           <a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram</a>
-          <a href="mailto:hello@alinamoreau.fr">hello@alinamoreau.fr</a>
+          <a href="mailto:hello@hannachauvat.fr">hello@hannachauvat.fr</a>
         </div>
-        <small>© 2026 · Paris / Normandie</small>
+        <small>{t.footer.rights}</small>
       </footer>
 
       {bookingOpen && (
-        <BookingModal onClose={() => setBookingOpen(false)} initialShoot={bookingShoot} />
+        <BookingModal t={t} lang={lang} onClose={() => setBookingOpen(false)} initialShoot={bookingShoot} />
       )}
     </div>
   )
 }
 
 function BookingModal({
+  t,
+  lang,
   onClose,
   initialShoot,
 }: {
+  t: Dict
+  lang: Lang
   onClose: () => void
   initialShoot: ShootType
 }) {
   const [shootType, setShootType] = useState<ShootType>(initialShoot)
   const [method, setMethod] = useState<ContactMethod>('instagram')
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const dialogRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
     document.body.classList.add('modal-open')
-    return () => document.body.classList.remove('modal-open')
+    dialogRef.current?.querySelector<HTMLElement>('input[name="name"]')?.focus()
+    return () => {
+      document.body.classList.remove('modal-open')
+      previous?.focus()
+    }
   }, [])
 
   useEffect(() => {
@@ -292,7 +240,24 @@ function BookingModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const trapFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab' || !dialogRef.current) return
+    const focusable = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])'),
+    )
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     setStatus('sending')
@@ -317,58 +282,73 @@ function BookingModal({
   }
 
   const selectedMethod = methods.find((item) => item.id === method) ?? methods[0]
+  const m = t.modal
 
   return (
-    <div className="booking-overlay" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
-    }}>
-      <section className="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-title">
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Закрыть">
-          <X />
+    <div
+      className="booking-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className="booking-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-title"
+        lang={lang}
+        onKeyDown={trapFocus}
+      >
+        <button className="modal-close" type="button" onClick={onClose} aria-label={m.close}>
+          <X aria-hidden="true" />
         </button>
         {status === 'success' ? (
-          <div className="booking-success">
-            <span><Check /></span>
-            <p>Заявка отправлена</p>
-            <h2>Я свяжусь с вами,<br />чтобы обсудить детали</h2>
-            <button type="button" onClick={onClose}>Вернуться к историям</button>
+          <div className="booking-success" role="status">
+            <span><Check aria-hidden="true" /></span>
+            <p>{m.successEyebrow}</p>
+            <h2 id="booking-title">{m.successTitle}</h2>
+            <button type="button" onClick={onClose}>{m.back}</button>
           </div>
         ) : (
           <>
             <div className="modal-heading">
-              <p>[ Бронирование ]</p>
-              <h2 id="booking-title">Расскажите<br />о вашей съёмке</h2>
-              <span>Обычно отвечаю в течение одного рабочего дня</span>
+              <p>{m.eyebrow}</p>
+              <h2 id="booking-title">{m.title}</h2>
+              <span>{m.subtitle}</span>
             </div>
             <form onSubmit={submit}>
               <label>
-                <span>Как вас зовут</span>
-                <input name="name" required minLength={2} maxLength={80} autoComplete="name" placeholder="Ваше имя" />
+                <span>{m.name}</span>
+                <input name="name" required minLength={2} maxLength={80} autoComplete="name" placeholder={m.namePh} />
               </label>
 
               <fieldset>
-                <legend>Тип съёмки</legend>
+                <legend>{m.type}</legend>
                 <div className="shoot-options">
-                  {shoots.map((shoot) => (
+                  {shootOrder.map((shoot) => (
                     <button
                       type="button"
                       key={shoot.id}
+                      aria-pressed={shootType === shoot.id}
                       className={shootType === shoot.id ? 'selected' : ''}
                       onClick={() => setShootType(shoot.id)}
                     >
-                      {shoot.title.replace(' съёмка', '')}
+                      {t.shoots[shoot.id].short}
                     </button>
                   ))}
                 </div>
               </fieldset>
 
               <fieldset>
-                <legend>Где вам удобно получить ответ</legend>
+                <legend>{m.reply}</legend>
                 <div className="method-options">
                   {methods.map((item) => (
                     <button
                       type="button"
                       key={item.id}
+                      aria-pressed={method === item.id}
                       className={method === item.id ? 'selected' : ''}
                       onClick={() => setMethod(item.id)}
                     >
@@ -392,20 +372,20 @@ function BookingModal({
               </label>
 
               <label>
-                <span>Желаемая дата</span>
+                <span>{m.date}</span>
                 <input name="date" required type="date" min={new Date().toISOString().split('T')[0]} />
               </label>
 
               {status === 'error' && (
                 <p className="form-error" role="alert">
-                  Не удалось отправить заявку. Напишите напрямую на hello@alinamoreau.fr
+                  {m.error}
                 </p>
               )}
 
               <button className="submit-booking" type="submit" disabled={status === 'sending'}>
-                {status === 'sending' ? 'Отправляю…' : 'Отправить заявку'} <ArrowRight />
+                {status === 'sending' ? m.sending : m.send} <ArrowRight aria-hidden="true" />
               </button>
-              <small>Нажимая кнопку, вы соглашаетесь на обработку данных для ответа на заявку</small>
+              <small>{m.consent}</small>
             </form>
           </>
         )}

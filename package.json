@@ -1,5 +1,5 @@
 {
-  "name": "alina-moreau-portfolio",
+  "name": "hanna-chauvat-portfolio",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,11 +9,12 @@
     "lint": "oxlint",
     "typecheck": "tsc -b --pretty false",
     "test:ui": "playwright test --reporter=line",
-    "preview": "NODE_ENV=production tsx server/index.ts"
+    "preview": "NODE_ENV=production tsx server/index.ts",
+    "test:telegram": "tsx --test tests/telegram.integration.test.ts",
+    "telegram:smoke": "tsx scripts/telegram-smoke.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@fontsource-variable/cormorant": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",

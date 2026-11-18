@@ -13,7 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 const dist = path.join(root, 'dist')
 const port = Number(process.env.PORT ?? 4173)
-const telegramChatId = '-1003887700261'
+const telegramChatId = process.env.TELEGRAM_CHAT_ID || '-1003887700261'
+const telegramApiBase = process.env.TELEGRAM_API_BASE || 'https://api.telegram.org'
 const allowedShootTypes = new Set(['portrait', 'wedding', 'commercial'])
 const allowedMethods = new Set(['instagram', 'email', 'telegram', 'whatsapp'])
 
@@ -97,7 +98,7 @@ const telegram = async (method: string, payload: object) => {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error('Telegram is not configured')
 
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+  const response = await fetch(`${telegramApiBase}/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

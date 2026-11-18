@@ -1,9 +1,8 @@
 @import "@fontsource-variable/inter";
-@import "@fontsource-variable/cormorant";
 
 :root {
   --sans: 'Inter Variable', Arial, sans-serif;
-  --display: 'Cormorant Variable', Georgia, serif;
+  --display: 'Inter Variable', Arial, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
   font-family: var(--sans);
   font-size: 16px;
