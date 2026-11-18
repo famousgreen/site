@@ -88,7 +88,7 @@ export const dictionary: Record<Lang, Dict> = {
     hero: {
       role: 'Photographe',
       place: 'Paris / Normandie',
-      year: 'Portfolio 2026',
+      year: 'Portfolio 2027',
       manifest: 'Des images sincères de personnes, d’amour et de marques.',
       cta: 'Réserver une séance',
       alts: [
@@ -117,7 +117,7 @@ export const dictionary: Record<Lang, Dict> = {
       },
     },
     closing: { title: 'L’histoire a déjà commencé. Gardons-la.', cta: 'Réserver une séance' },
-    footer: { rights: '© 2026 Hanna Chauvat' },
+    footer: { rights: '© 2027 Hanna Chauvat' },
     modal: {
       eyebrow: 'Réservation',
       title: 'Parlez-moi de votre séance',
@@ -147,7 +147,7 @@ export const dictionary: Record<Lang, Dict> = {
     hero: {
       role: 'Photographer',
       place: 'Paris / Normandy',
-      year: 'Portfolio 2026',
+      year: 'Portfolio 2027',
       manifest: 'Honest images of people, love and brands.',
       cta: 'Book a shoot',
       alts: [
@@ -176,7 +176,7 @@ export const dictionary: Record<Lang, Dict> = {
       },
     },
     closing: { title: 'The story is already happening. Let’s keep it.', cta: 'Book a shoot' },
-    footer: { rights: '© 2026 Hanna Chauvat' },
+    footer: { rights: '© 2027 Hanna Chauvat' },
     modal: {
       eyebrow: 'Booking',
       title: 'Tell me about your shoot',
@@ -206,7 +206,7 @@ export const dictionary: Record<Lang, Dict> = {
     hero: {
       role: 'Фотограф',
       place: 'Париж / Нормандія',
-      year: 'Портфоліо 2026',
+      year: 'Портфоліо 2027',
       manifest: 'Щирі кадри про людей, кохання та бренди.',
       cta: 'Забронювати зйомку',
       alts: [
@@ -235,7 +235,7 @@ export const dictionary: Record<Lang, Dict> = {
       },
     },
     closing: { title: 'Історія вже відбувається. Збережімо її.', cta: 'Забронювати зйомку' },
-    footer: { rights: '© 2026 Hanna Chauvat' },
+    footer: { rights: '© 2027 Hanna Chauvat' },
     modal: {
       eyebrow: 'Бронювання',
       title: 'Розкажіть про вашу зйомку',
@@ -265,7 +265,7 @@ export const dictionary: Record<Lang, Dict> = {
     hero: {
       role: 'Фотограф',
       place: 'Париж / Нормандия',
-      year: 'Портфолио 2026',
+      year: 'Портфолио 2027',
       manifest: 'Честные кадры о людях, любви и брендах.',
       cta: 'Забронировать съёмку',
       alts: [
@@ -294,7 +294,7 @@ export const dictionary: Record<Lang, Dict> = {
       },
     },
     closing: { title: 'История уже происходит. Давайте её сохраним.', cta: 'Забронировать съёмку' },
-    footer: { rights: '© 2026 Hanna Chauvat' },
+    footer: { rights: '© 2027 Hanna Chauvat' },
     modal: {
       eyebrow: 'Бронирование',
       title: 'Расскажите о вашей съёмке',

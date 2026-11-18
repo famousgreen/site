@@ -9,6 +9,8 @@ import { LANGS, dictionary, detectLanguage, saveLanguage } from './i18n'
 import type { Dict, Lang, ShootType } from './i18n'
 import './App.css'
 
+const minDate = [new Date().toISOString().split('T')[0], '2027-01-01'].sort().at(-1)
+
 const shootIds: ShootType[] = ['portrait', 'wedding', 'commercial']
 
 type ContactMethod = 'instagram' | 'email' | 'telegram' | 'whatsapp'
@@ -106,16 +108,16 @@ function App() {
         <a className="wordmark" href="#top" aria-label="Hanna Chauvat">
           H. Chauvat
         </a>
+        <nav className="desktop-nav" aria-label="Main">
+          <a href="#about">{x.nav.about}</a>
+          <a href="#work">{x.nav.shoots}</a>
+          <a href="#cases">{x.nav.cases}</a>
+          <button type="button" onClick={() => openBooking()}>
+            {t.nav.book}
+          </button>
+        </nav>
         <div className="header-tools">
           <LanguageSwitch lang={lang} label={t.langLabel} onChange={changeLanguage} />
-          <nav className="desktop-nav" aria-label="Main">
-            <a href="#about">{x.nav.about}</a>
-            <a href="#cases">{x.nav.cases}</a>
-            <a href="#work">{x.nav.shoots}</a>
-            <button type="button" onClick={() => openBooking()}>
-              {t.nav.book}
-            </button>
-          </nav>
           <button
             className="menu-toggle"
             type="button"
@@ -132,8 +134,8 @@ function App() {
       {menuOpen && (
         <nav className="mobile-menu" id="mobile-menu" aria-label="Main">
           <a href="#about" onClick={() => setMenuOpen(false)}>{x.nav.about}</a>
-          <a href="#cases" onClick={() => setMenuOpen(false)}>{x.nav.cases}</a>
           <a href="#work" onClick={() => setMenuOpen(false)}>{x.nav.shoots}</a>
+          <a href="#cases" onClick={() => setMenuOpen(false)}>{x.nav.cases}</a>
           <button type="button" onClick={() => { setMenuOpen(false); openBooking() }}>
             {t.nav.book} <ArrowRight aria-hidden="true" />
           </button>
@@ -161,15 +163,17 @@ function App() {
             {photos.map((photo, i) => (
               <figure className={`photo photo-${i + 1}`} key={photo.src}>
                 <img src={photo.src} alt={t.hero.alts[i]} style={{ objectPosition: photo.position }} />
-                <figcaption>{photo.caption}</figcaption>
+                <figcaption>
+                  <span className="photo-n">{String(i + 1).padStart(2, '0')} / 04</span> {photo.caption}
+                </figcaption>
               </figure>
             ))}
           </div>
         </section>
 
         <About x={x} onBook={() => openBooking()} />
-        <Cases x={x} onOpen={openCase} />
         <Shoots t={t} x={x} onBook={openBooking} />
+        <Cases x={x} onOpen={openCase} />
 
         <section className="closing">
           <Reveal>
@@ -377,7 +381,7 @@ function BookingModal({
 
               <label>
                 <span>{m.date}</span>
-                <input name="date" required type="date" min={new Date().toISOString().split('T')[0]} />
+                <input name="date" required type="date" min={minDate} />
               </label>
 
               {status === 'error' && (

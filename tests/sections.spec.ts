@@ -31,7 +31,7 @@ test.describe('about and cases', () => {
   test('navigation links lead to about, cases and shoots', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(url)
-    for (const [name, id] of [['About', 'about'], ['Cases', 'cases'], ['Shoots', 'work']] as const) {
+    for (const [name, id] of [['About', 'about'], ['Shoots', 'work'], ['Cases', 'cases']] as const) {
       await page.locator('.desktop-nav').getByRole('link', { name }).click()
       await expect(page.locator(`#${id}`)).toBeInViewport({ ratio: 0.1 })
     }

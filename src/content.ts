@@ -65,8 +65,8 @@ export type Extra = {
 }
 
 export const caseMeta: Array<{ id: CaseId; title: string; year: string; cover: string; coverPosition: string }> = [
-  { id: 'seine', title: 'Seine, Slowly', year: '2026', cover: '/images/portfolio/portrait-paris.jpg', coverPosition: '50% 35%' },
-  { id: 'etretat', title: 'Étretat, Late September', year: '2025', cover: '/images/portfolio/normandy-coast.jpg', coverPosition: '50% 55%' },
+  { id: 'seine', title: 'Seine, Slowly', year: '2027', cover: '/images/portfolio/portrait-paris.jpg', coverPosition: '50% 35%' },
+  { id: 'etretat', title: 'Étretat, Late September', year: '2027', cover: '/images/portfolio/normandy-coast.jpg', coverPosition: '50% 55%' },
   { id: 'rouge', title: 'Maison Rouge', year: '2025', cover: '/images/portfolio/commercial-still.jpg', coverPosition: '50% 50%' },
   { id: 'orsay', title: 'Quai Nº 7', year: '2024', cover: '/images/portfolio/paris-dusk.jpg', coverPosition: '50% 40%' },
 ]
