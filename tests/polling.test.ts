@@ -92,8 +92,8 @@ describe('callback mode', () => {
     assert.equal(calls.length, 0)
   })
 
-  test('health reports the callback mode', () => {
-    const body = health().body as { callbacks: string }
+  test('health reports the callback mode', async () => {
+    const body = (await health()).body as { callbacks: string }
     assert.equal(body.callbacks, 'polling')
   })
 })

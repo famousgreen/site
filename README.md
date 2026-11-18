@@ -22,11 +22,17 @@ npm run dev
 
 После деплоя зарегистрируйте webhook с URL `https://your-domain.example/api/telegram/webhook` и передайте `TELEGRAM_WEBHOOK_SECRET` как `secret_token`. Секреты не коммитьте и не передавайте в URL публичных сервисов.
 
-### Кнопки без публичного webhook (polling)
+### Автонастройка webhook (основной режим на опубликованном сайте)
 
-Если задан `TELEGRAM_BOT_TOKEN`, а `TELEGRAM_WEBHOOK_SECRET` пуст, сервер сам опрашивает Telegram через `getUpdates` (long polling 25 с, `allowed_updates=["callback_query"]`, offset подтверждается сразу, повторные `update_id` игнорируются). Если у бота был webhook, он снимается через `deleteWebhook`. Кнопки «Ответила», «Под вопросом» и удаление с подтверждением работают так же, как через webhook. `GET /api/health` показывает `callbacks: "polling" | "webhook" | "off"`. Отключить: `TELEGRAM_POLLING=off`.
+Если заданы `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`, приложение само вызывает Telegram `setWebhook` с URL `https://paris-photographer.apps.grok.bot/api/telegram/webhook`, `secret_token` и `allowed_updates=["callback_query"]`. Вызов идемпотентный: один раз на процесс и при смене URL/секрета/токена, затем каждые 10 минут проверка `getWebhookInfo` (повторная регистрация только при расхождении). Ошибки повторяются с экспоненциальной задержкой (5 с … 5 мин), заявка при этом не блокируется. Триггеры: `GET /api/health`, `POST /api/booking`, `POST /api/telegram/setup` (принудительный повтор) и старт Node-сервера.
 
-Ограничение: polling живёт, пока работает процесс. В Node-сервере он запускается при старте; на serverless-хосте цикл стартует при первом обращении к `/api/health` или `/api/booking` и живёт, пока инстанс тёплый. Для надёжности можно дёргать `POST /api/telegram/poll` по расписанию (одноразовый опрос). Если задан `TELEGRAM_WEBHOOK_SECRET`, polling не запускается (приоритет у webhook).
+Автонастройка работает только на опубликованном хосте (`CURSOR_APP_ID`) или при `TELEGRAM_AUTO_WEBHOOK=on`, поэтому локальные запуски не перехватывают боевой webhook. `/api/health` показывает `callbacks`, `webhook.{url,secretSet,status,configured,lastError,nextRetryAt,pendingUpdates}` и `polling`; секреты и токен не выводятся.
+
+**Требования на стороне пользователя:** (1) приложение опубликовано с видимостью **public** (Telegram не может пройти sign-in приватного приложения); (2) значения `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` сохранены как секреты, привязанные к приложению; (3) приложение переопубликовано после этого изменения.
+
+### Polling (только локально / запасной вариант)
+
+Если токен есть, а `TELEGRAM_WEBHOOK_SECRET` пуст, Node-сервер при старте запускает `getUpdates` (long polling, `callback_query`, offset, дедупликация, `deleteWebhook` при необходимости). На serverless-хосте это не считается надёжным: `/api/health` и `/api/booking` polling больше не запускают, `polling.reliable` всегда `false`. Одноразовый опрос: `POST /api/telegram/poll`. Отключить: `TELEGRAM_POLLING=off`.
 
 ## Проверки и production preview
 

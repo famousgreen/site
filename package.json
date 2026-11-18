@@ -10,7 +10,7 @@
     "typecheck": "tsc -b --pretty false",
     "test:ui": "playwright test --reporter=line",
     "preview": "NODE_ENV=production tsx server/index.ts",
-    "test:telegram": "tsx --test tests/telegram.integration.test.ts tests/api-handlers.test.ts tests/polling.test.ts",
+    "test:telegram": "tsx --test tests/telegram.integration.test.ts tests/api-handlers.test.ts tests/polling.test.ts tests/webhook-setup.test.ts",
     "telegram:smoke": "tsx scripts/telegram-smoke.ts"
   },
   "dependencies": {

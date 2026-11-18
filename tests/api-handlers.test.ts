@@ -38,8 +38,15 @@ after(async () => {
 
 describe('web-signature API handlers (published host)', () => {
   test('health reports configuration without exposing the token', async () => {
-    const body = await (await health()).json()
-    assert.deepEqual(body, { ok: true, telegramConfigured: true, callbacks: 'webhook' })
+    const body = (await (await health()).json()) as Record<string, any>
+    assert.equal(body.ok, true)
+    assert.equal(body.telegramConfigured, true)
+    assert.equal(body.callbacks, 'webhook')
+    assert.equal(body.webhook.secretSet, true)
+    assert.equal(body.webhook.status, 'disabled')
+    assert.equal(body.polling.reliable, false)
+    assert.ok(!JSON.stringify(body).includes('handler-secret'))
+    assert.ok(!JSON.stringify(body).includes('test-token-not-real'))
   })
 
   test('booking sends to the default chat with action buttons', async () => {

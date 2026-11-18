@@ -139,7 +139,10 @@ const telegram = async (method: string, payload: object, timeoutMs = 8_000, abor
     signal: abort ? AbortSignal.any([AbortSignal.timeout(timeoutMs), abort]) : AbortSignal.timeout(timeoutMs),
   })
 
-  if (!response.ok) throw new Error(`Telegram API returned ${response.status}`)
+  if (!response.ok) {
+    const detail = await response.json().then((body) => (body as { description?: string }).description, () => undefined)
+    throw new Error(`Telegram API returned ${response.status}${detail ? `: ${String(detail).slice(0, 160)}` : ''}`)
+  }
   return response.json() as Promise<TelegramResponse>
 }
 
@@ -343,14 +346,145 @@ export const resetPollingState = () => {
   seenUpdates.clear()
 }
 
-export const health = (): Result => {
-  ensurePolling()
+const DEFAULT_PUBLIC_URL = 'https://paris-photographer.apps.grok.bot'
+
+export const webhookUrl = () =>
+  process.env.TELEGRAM_WEBHOOK_URL || `${(process.env.APP_PUBLIC_URL || DEFAULT_PUBLIC_URL).replace(/\/$/, '')}/api/telegram/webhook`
+
+const WEBHOOK_UPDATES = ['callback_query']
+
+const autoWebhookAllowed = () => {
+  const flag = process.env.TELEGRAM_AUTO_WEBHOOK
+  if (flag === 'off') return false
+  if (flag === 'on') return true
+  return Boolean(process.env.CURSOR_APP_ID || process.env.VERCEL || process.env.TELEGRAM_WEBHOOK_URL)
+}
+
+type WebhookState = {
+  status: 'unconfigured' | 'configured' | 'error' | 'disabled'
+  fingerprint: string
+  configuredAt: number
+  checkedAt: number
+  attempts: number
+  nextAttemptAt: number
+  lastError: string | null
+  pendingUpdates: number | null
+}
+
+const initialWebhookState = (): WebhookState => ({
+  status: 'unconfigured',
+  fingerprint: '',
+  configuredAt: 0,
+  checkedAt: 0,
+  attempts: 0,
+  nextAttemptAt: 0,
+  lastError: null,
+  pendingUpdates: null,
+})
+
+let webhookState = initialWebhookState()
+let webhookFlight: Promise<void> | null = null
+
+export const resetWebhookState = () => {
+  webhookState = initialWebhookState()
+  webhookFlight = null
+}
+
+const fingerprint = () => `${webhookUrl()}|${process.env.TELEGRAM_WEBHOOK_SECRET ?? ''}|${process.env.TELEGRAM_BOT_TOKEN ?? ''}`
+
+const sanitize = (message: string) => {
+  let safe = message
+  for (const secret of [process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_WEBHOOK_SECRET]) {
+    if (secret) safe = safe.split(secret).join('[redacted]')
+  }
+  return safe.slice(0, 200)
+}
+
+export const webhookReport = () => ({
+  url: webhookUrl(),
+  secretSet: Boolean(process.env.TELEGRAM_WEBHOOK_SECRET),
+  allowedUpdates: WEBHOOK_UPDATES,
+  autoSetup: autoWebhookAllowed(),
+  status: callbackMode() === 'webhook' && !autoWebhookAllowed() ? 'disabled' : webhookState.status,
+  configured: webhookState.status === 'configured',
+  checkedAt: webhookState.checkedAt ? new Date(webhookState.checkedAt).toISOString() : null,
+  attempts: webhookState.attempts,
+  nextRetryAt: webhookState.status === 'error' ? new Date(webhookState.nextAttemptAt).toISOString() : null,
+  pendingUpdates: webhookState.pendingUpdates,
+  lastError: webhookState.lastError,
+})
+
+const registerWebhook = async (force: boolean) => {
+  const url = webhookUrl()
+  const state = webhookState
+  const sameConfig = state.fingerprint === fingerprint()
+
+  if (!force && state.status === 'configured' && sameConfig) {
+    const info = (await telegram('getWebhookInfo', {})).result as
+      | { url?: string; allowed_updates?: string[]; pending_update_count?: number; last_error_message?: string }
+      | undefined
+    state.pendingUpdates = info?.pending_update_count ?? null
+    const healthy = info?.url === url && (info.allowed_updates ?? []).includes('callback_query')
+    if (healthy) {
+      state.checkedAt = Date.now()
+      return
+    }
+  }
+
+  await telegram('setWebhook', {
+    url,
+    secret_token: process.env.TELEGRAM_WEBHOOK_SECRET,
+    allowed_updates: WEBHOOK_UPDATES,
+    drop_pending_updates: false,
+  })
+  state.status = 'configured'
+  state.fingerprint = fingerprint()
+  state.configuredAt = Date.now()
+  state.checkedAt = Date.now()
+  state.attempts = 0
+  state.lastError = null
+}
+
+export const ensureWebhook = async (options: { force?: boolean; budgetMs?: number } = {}): Promise<void> => {
+  if (callbackMode() !== 'webhook' || !autoWebhookAllowed()) return
+  const now = Date.now()
+  const recheckMs = Number(process.env.TELEGRAM_WEBHOOK_RECHECK_MS ?? 600_000)
+  const sameConfig = webhookState.fingerprint === fingerprint()
+  const fresh = webhookState.status === 'configured' && sameConfig && now - webhookState.checkedAt < recheckMs
+  const backingOff = webhookState.status === 'error' && sameConfig && now < webhookState.nextAttemptAt
+  if (!options.force && (fresh || backingOff)) return
+
+  if (!webhookFlight) {
+    const baseDelay = Number(process.env.TELEGRAM_WEBHOOK_BACKOFF_MS ?? 5_000)
+    webhookFlight = registerWebhook(Boolean(options.force))
+      .catch((error: unknown) => {
+        webhookState.status = 'error'
+        webhookState.fingerprint = fingerprint()
+        webhookState.attempts += 1
+        webhookState.checkedAt = Date.now()
+        webhookState.lastError = sanitize(error instanceof Error ? error.message : 'unknown error')
+        webhookState.nextAttemptAt = Date.now() + Math.min(baseDelay * 2 ** (webhookState.attempts - 1), 300_000)
+        console.error('Telegram webhook setup failed', webhookState.lastError)
+      })
+      .finally(() => {
+        webhookFlight = null
+      })
+  }
+
+  const budget = options.budgetMs ?? 4_000
+  await Promise.race([webhookFlight, sleep(budget)])
+}
+
+export const health = async (): Promise<Result> => {
+  await ensureWebhook()
   return {
     status: 200,
     body: {
       ok: true,
       telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
       callbacks: callbackMode(),
+      webhook: webhookReport(),
+      polling: { active: isPolling(), reliable: false },
     },
   }
 }
@@ -361,7 +495,6 @@ const parseJson = <T>(raw: string): T => {
 }
 
 export const createBooking = async (raw: string): Promise<Result> => {
-  ensurePolling()
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     return { status: 503, body: { error: 'Booking service is not configured' } }
   }
@@ -386,6 +519,7 @@ export const createBooking = async (raw: string): Promise<Result> => {
       reply_markup: keyboard(bookingId),
     })
 
+    await ensureWebhook({ budgetMs: 2_500 })
     return { status: 201, body: { ok: true, bookingId } }
   } catch (error) {
     console.error('Booking delivery failed', error instanceof Error ? error.message : 'unknown error')

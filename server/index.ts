@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { createServer } from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createBooking, ensurePolling, health, processWebhook } from './core.js'
+import { createBooking, ensurePolling, ensureWebhook, health, processWebhook } from './core.js'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
@@ -87,7 +87,7 @@ const start = async () => {
     }
 
     if (request.method === 'GET' && pathname === '/api/health') {
-      const result = health()
+      const result = await health()
       sendJson(response, result.status, result.body)
       return
     }
@@ -102,7 +102,8 @@ const start = async () => {
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`Portfolio server listening on http://localhost:${port}`)
-    if (ensurePolling()) console.log('Telegram callback polling started')
+    void ensureWebhook()
+    if (ensurePolling()) console.log('Telegram callback polling started (local fallback)')
   })
 }
 
