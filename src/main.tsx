@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import JeannaApp from './JeannaApp.tsx'
+import App from './App.tsx'
+import { detectLanguage } from './i18n'
+
+document.documentElement.lang = detectLanguage()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <JeannaApp />
+    <App />
   </StrictMode>,
 )
