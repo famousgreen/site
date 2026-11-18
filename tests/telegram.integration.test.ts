@@ -38,6 +38,16 @@ const callback = (data: string, chatId: number | string = Number(CHAT_ID)) => ({
 const webhook = (body: unknown, secret = WEBHOOK_SECRET) =>
   post('/api/telegram/webhook', body, { 'x-telegram-bot-api-secret-token': secret })
 
+const plainText = (html: string) =>
+  html.replace(/<[^>]+>/g, '').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
+
+const sendBooking = async (contactMethod: string, contact: string) => {
+  calls.length = 0
+  const response = await post('/api/booking', { name: 'Anna', shootType: 'wedding', contactMethod, contact, date: tomorrow() })
+  assert.equal(response.status, 201)
+  return String(calls[0].payload.text)
+}
+
 const waitForServer = async () => {
   for (let i = 0; i < 60; i += 1) {
     try {
@@ -63,7 +73,7 @@ before(async () => {
   })
   await new Promise<void>((resolve) => mock.listen(MOCK_PORT, '127.0.0.1', resolve))
 
-  appProcess = spawn('npx', ['tsx', 'server/index.ts'], {
+  appProcess = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], {
     env: {
       ...process.env,
       NODE_ENV: 'production',
@@ -84,6 +94,26 @@ after(async () => {
 })
 
 describe('booking endpoint', () => {
+  test('makes the contact clickable for every channel', async () => {
+    const cases: Array<[string, string, string]> = [
+      ['email', 'anna@example.com', 'mailto:anna@example.com'],
+      ['telegram', '@anna_ph', 'https://t.me/anna_ph'],
+      ['instagram', '@anna.ph', 'https://instagram.com/anna.ph'],
+      ['whatsapp', '+33 6 12 34 56 78', 'https://wa.me/33612345678'],
+    ]
+    for (const [method, contact, href] of cases) {
+      const text = await sendBooking(method, contact)
+      assert.ok(text.includes(`<a href="${href}">${contact}</a>`), method)
+      assert.equal(calls[0].payload.parse_mode, 'HTML')
+    }
+  })
+
+  test('leaves unrecognised or hostile contacts as escaped plain text', async () => {
+    const text = await sendBooking('telegram', 'x"><script>')
+    assert.ok(!text.includes('<a href'))
+    assert.ok(text.includes('x&quot;') === false && text.includes('x"&gt;&lt;script&gt;'))
+  })
+
   test('rejects invalid bookings without calling Telegram', async () => {
     calls.length = 0
     const response = await post('/api/booking', { name: 'A', shootType: 'x', contactMethod: 'sms', contact: '1', date: '2000-01-01' })
@@ -119,13 +149,39 @@ describe('webhook callbacks', () => {
     assert.equal((await post('/api/telegram/webhook', {})).status, 401)
   })
 
-  test('marks a booking as answered or in question', async () => {
-    for (const [action, label] of [['answered', 'Ответила'], ['question', 'Под вопросом']]) {
+  test('restyles the message per status and keeps booking fields and links', async () => {
+    const original = await sendBooking('telegram', '@anna_ph')
+    assert.match(original, /^📩 <b>Новая заявка на съёмку<\/b>/)
+    assert.match(original, /<b>Статус:<\/b> 🆕 Новая/)
+
+    const edits: Record<string, string> = {}
+    for (const [action, header, line] of [
+      ['answered', '✅ <b>Заявка · ответила</b>', '✅ Ответила'],
+      ['question', '❓ <b>Заявка · под вопросом</b>', '❓ Под вопросом'],
+    ]) {
       calls.length = 0
-      assert.equal((await webhook(callback(`status:${action}:abcdef12`))).status, 200)
+      const update = callback(`status:${action}:abcdef12`)
+      update.callback_query.message.text = plainText(original)
+      assert.equal((await webhook(update)).status, 200)
       assert.deepEqual(calls.map((call) => call.method), ['editMessageText', 'answerCallbackQuery'])
-      assert.match(String(calls[0].payload.text), new RegExp(`Статус: ${label}`))
+      const text = String(calls[0].payload.text)
+      edits[action] = text
+      assert.equal(calls[0].payload.parse_mode, 'HTML')
+      assert.ok(text.startsWith(header))
+      assert.ok(text.includes(`<b>Статус:</b> ${line}`))
+      assert.ok(text.includes('<b>Имя:</b> Anna'))
+      assert.ok(text.includes('<b>Формат:</b> Свадебная съёмка'))
+      assert.ok(text.includes('<a href="https://t.me/anna_ph">@anna_ph</a>'))
+      assert.ok(text.includes('<code>abcdef12</code>'))
     }
+    assert.notEqual(edits.answered, edits.question)
+  })
+
+  test('falls back to a plain status line for messages it cannot parse', async () => {
+    calls.length = 0
+    await webhook(callback('status:answered:abcdef12'))
+    assert.equal(calls[0].payload.parse_mode, undefined)
+    assert.match(String(calls[0].payload.text), /Статус: ✅ Ответила/)
   })
 
   test('delete requires confirmation and can be cancelled', async () => {

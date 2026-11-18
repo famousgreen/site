@@ -53,6 +53,69 @@ export const safeEqual = (left: string, right: string) => {
 const escapeHtml = (value: string) =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 
+type BookingStatus = 'new' | 'answered' | 'question'
+
+const statusView: Record<BookingStatus, { header: string; line: string }> = {
+  new: { header: '📩 <b>Новая заявка на съёмку</b>', line: '🆕 Новая' },
+  answered: { header: '✅ <b>Заявка · ответила</b>', line: '✅ Ответила' },
+  question: { header: '❓ <b>Заявка · под вопросом</b>', line: '❓ Под вопросом' },
+}
+
+const attr = (value: string) => escapeHtml(value).replaceAll('"', '&quot;')
+
+export const contactLink = (method: string, contact: string): string | null => {
+  const value = contact.trim()
+  if (method === 'email') {
+    return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(value) ? `mailto:${value}` : null
+  }
+  if (method === 'telegram') {
+    const handle = value.replace(/^(https?:\/\/)?(t\.me\/|telegram\.me\/)/i, '').replace(/^@/, '')
+    return /^[A-Za-z0-9_]{4,32}$/.test(handle) ? `https://t.me/${handle}` : null
+  }
+  if (method === 'instagram') {
+    const handle = value.replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/$/, '')
+    return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://instagram.com/${handle}` : null
+  }
+  if (method === 'whatsapp') {
+    const digits = value.replace(/[\s()+.-]/g, '')
+    return /^\d{7,15}$/.test(digits) ? `https://wa.me/${digits}` : null
+  }
+  return null
+}
+
+const renderBooking = (booking: Booking, bookingId: string, status: BookingStatus) => {
+  const link = contactLink(booking.contactMethod, booking.contact)
+  const contact = link
+    ? `<a href="${attr(link)}">${escapeHtml(booking.contact)}</a>`
+    : escapeHtml(booking.contact)
+
+  return [
+    statusView[status].header,
+    '',
+    `<b>Имя:</b> ${escapeHtml(booking.name)}`,
+    `<b>Формат:</b> ${shootLabels[booking.shootType]}`,
+    `<b>Дата:</b> ${booking.date}`,
+    `<b>Ответить через:</b> ${methodLabels[booking.contactMethod]}`,
+    `<b>Контакт:</b> ${contact}`,
+    '',
+    `<b>Статус:</b> ${statusView[status].line}`,
+    `<code>${bookingId}</code>`,
+  ].join('\n')
+}
+
+const parseBookingText = (text: string): Booking | null => {
+  const field = (label: string) => new RegExp(`^${label}: (.+)$`, 'm').exec(text)?.[1]?.trim()
+  const shootLabel = field('Формат')
+  const methodLabel = field('Ответить через')
+  const shootType = Object.keys(shootLabels).find((key) => shootLabels[key] === shootLabel)
+  const contactMethod = Object.keys(methodLabels).find((key) => methodLabels[key] === methodLabel)
+  const name = field('Имя')
+  const contact = field('Контакт')
+  const date = field('Дата')
+  if (!shootType || !contactMethod || !name || !contact || !date) return null
+  return { name, shootType, contactMethod, contact, date }
+}
+
 const keyboard = (bookingId: string) => ({
   inline_keyboard: [
     [
@@ -80,10 +143,10 @@ const telegram = async (method: string, payload: object) => {
 
 const validateBooking = (input: Partial<Booking>): Booking | null => {
   const booking: Booking = {
-    name: String(input.name ?? '').trim(),
+    name: String(input.name ?? '').replace(/\s+/g, ' ').trim(),
     shootType: String(input.shootType ?? ''),
     contactMethod: String(input.contactMethod ?? ''),
-    contact: String(input.contact ?? '').trim(),
+    contact: String(input.contact ?? '').replace(/\s+/g, ' ').trim(),
     date: String(input.date ?? ''),
   }
 
@@ -126,15 +189,23 @@ const handleCallback = async (callback: TelegramCallback) => {
   const [, group, action, bookingId] = match
 
   if (group === 'status' && (action === 'answered' || action === 'question')) {
-    const baseText = (callback.message?.text ?? '').replace(/\n\nСтатус:.*$/s, '')
-    const status = action === 'answered' ? 'Ответила' : 'Под вопросом'
+    const statusKey: BookingStatus = action === 'answered' ? 'answered' : 'question'
+    const status = statusView[statusKey].line
+    const booking = parseBookingText(callback.message?.text ?? '')
+    const fallbackText = (callback.message?.text ?? '').replace(/\n\nСтатус:.*$/s, '')
     await telegram('editMessageText', {
       chat_id: telegramChatId(),
       message_id: messageId,
-      text: `${baseText}\n\nСтатус: ${status}`,
+      ...(booking
+        ? {
+            text: renderBooking(booking, bookingId, statusKey),
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+          }
+        : { text: `${fallbackText}\n\nСтатус: ${status}` }),
       reply_markup: keyboard(bookingId),
     })
-    await answerCallback(callbackId, `Статус: ${status}`)
+    await answerCallback(callbackId, `Статус: ${status.replace(/^\S+ /, '')}`)
     return
   }
 
@@ -198,17 +269,7 @@ export const createBooking = async (raw: string): Promise<Result> => {
 
   try {
     const bookingId = randomUUID().slice(0, 8)
-    const text = [
-      '<b>Новая заявка на съёмку</b>',
-      '',
-      `<b>Имя:</b> ${escapeHtml(booking.name)}`,
-      `<b>Формат:</b> ${shootLabels[booking.shootType]}`,
-      `<b>Дата:</b> ${booking.date}`,
-      `<b>Ответить через:</b> ${methodLabels[booking.contactMethod]}`,
-      `<b>Контакт:</b> ${escapeHtml(booking.contact)}`,
-      '',
-      `<code>${bookingId}</code>`,
-    ].join('\n')
+    const text = renderBooking(booking, bookingId, 'new')
 
     await telegram('sendMessage', {
       chat_id: telegramChatId(),
