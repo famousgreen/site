@@ -126,7 +126,9 @@ const keyboard = (bookingId: string) => ({
   ],
 })
 
-const telegram = async (method: string, payload: object) => {
+type TelegramResponse = { ok: boolean; result?: unknown }
+
+const telegram = async (method: string, payload: object, timeoutMs = 8_000, abort?: AbortSignal) => {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error('Telegram is not configured')
 
@@ -134,11 +136,11 @@ const telegram = async (method: string, payload: object) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(8_000),
+    signal: abort ? AbortSignal.any([AbortSignal.timeout(timeoutMs), abort]) : AbortSignal.timeout(timeoutMs),
   })
 
   if (!response.ok) throw new Error(`Telegram API returned ${response.status}`)
-  return response.json() as Promise<{ ok: boolean }>
+  return response.json() as Promise<TelegramResponse>
 }
 
 const validateBooking = (input: Partial<Booking>): Booking | null => {
@@ -244,10 +246,114 @@ const handleCallback = async (callback: TelegramCallback) => {
 }
 
 
-export const health = (): Result => ({
-  status: 200,
-  body: { ok: true, telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN) },
-})
+type PollUpdate = { update_id: number; callback_query?: TelegramCallback }
+
+export const callbackMode = (): 'webhook' | 'polling' | 'off' => {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return 'off'
+  if (process.env.TELEGRAM_WEBHOOK_SECRET) return 'webhook'
+  return process.env.TELEGRAM_POLLING === 'off' ? 'off' : 'polling'
+}
+
+let pollOffset = 0
+const seenUpdates = new Set<number>()
+let pollLoop: Promise<void> | null = null
+let pollController: AbortController | null = null
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => { clearTimeout(timer); resolve() }, { once: true })
+  })
+
+const clearWebhook = async () => {
+  const info = (await telegram('getWebhookInfo', {})).result as { url?: string } | undefined
+  if (info?.url) await telegram('deleteWebhook', { drop_pending_updates: false })
+}
+
+export const pollOnce = async (timeoutSeconds = 25, abort?: AbortSignal): Promise<number> => {
+  const response = await telegram(
+    'getUpdates',
+    { offset: pollOffset, timeout: timeoutSeconds, allowed_updates: ['callback_query'] },
+    (timeoutSeconds + 10) * 1000,
+    abort,
+  )
+  const updates = Array.isArray(response.result) ? (response.result as PollUpdate[]) : []
+
+  for (const update of updates) {
+    pollOffset = Math.max(pollOffset, update.update_id + 1)
+    if (seenUpdates.has(update.update_id)) continue
+    seenUpdates.add(update.update_id)
+    if (seenUpdates.size > 500) seenUpdates.delete(seenUpdates.values().next().value as number)
+    if (!update.callback_query) continue
+    try {
+      await handleCallback(update.callback_query)
+    } catch (error) {
+      console.error('Callback processing failed', error instanceof Error ? error.message : 'unknown error')
+    }
+  }
+
+  return updates.length
+}
+
+const runPolling = async (signal: AbortSignal) => {
+  const timeout = Number(process.env.TELEGRAM_POLL_TIMEOUT ?? 25)
+  let backoff = 1_000
+  let webhookChecked = false
+
+  while (!signal.aborted && callbackMode() === 'polling') {
+    try {
+      if (!webhookChecked) {
+        await clearWebhook()
+        webhookChecked = true
+      }
+      const received = await pollOnce(timeout, signal)
+      backoff = 1_000
+      if (received === 0 && timeout === 0) await sleep(200, signal)
+    } catch (error) {
+      if (signal.aborted) break
+      const message = error instanceof Error ? error.message : 'unknown error'
+      console.error('Telegram polling error', message)
+      if (message.includes('409')) webhookChecked = false
+      await sleep(backoff, signal)
+      backoff = Math.min(backoff * 2, 30_000)
+    }
+  }
+}
+
+export const ensurePolling = (): boolean => {
+  if (pollLoop || callbackMode() !== 'polling') return false
+  const controller = new AbortController()
+  pollController = controller
+  pollLoop = runPolling(controller.signal).finally(() => {
+    pollLoop = null
+    pollController = null
+  })
+  return true
+}
+
+export const isPolling = () => pollLoop !== null
+
+export const stopPolling = async () => {
+  pollController?.abort()
+  await pollLoop
+}
+
+export const resetPollingState = () => {
+  pollOffset = 0
+  seenUpdates.clear()
+}
+
+export const health = (): Result => {
+  ensurePolling()
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+      callbacks: callbackMode(),
+    },
+  }
+}
 
 const parseJson = <T>(raw: string): T => {
   if (Buffer.byteLength(raw) > MAX_BODY) throw new Error('Payload too large')
@@ -255,6 +361,7 @@ const parseJson = <T>(raw: string): T => {
 }
 
 export const createBooking = async (raw: string): Promise<Result> => {
+  ensurePolling()
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     return { status: 503, body: { error: 'Booking service is not configured' } }
   }

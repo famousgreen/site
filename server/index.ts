@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { createServer } from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createBooking, health, processWebhook } from './core.js'
+import { createBooking, ensurePolling, health, processWebhook } from './core.js'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
@@ -102,6 +102,7 @@ const start = async () => {
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`Portfolio server listening on http://localhost:${port}`)
+    if (ensurePolling()) console.log('Telegram callback polling started')
   })
 }
 

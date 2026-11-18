@@ -22,6 +22,12 @@ npm run dev
 
 После деплоя зарегистрируйте webhook с URL `https://your-domain.example/api/telegram/webhook` и передайте `TELEGRAM_WEBHOOK_SECRET` как `secret_token`. Секреты не коммитьте и не передавайте в URL публичных сервисов.
 
+### Кнопки без публичного webhook (polling)
+
+Если задан `TELEGRAM_BOT_TOKEN`, а `TELEGRAM_WEBHOOK_SECRET` пуст, сервер сам опрашивает Telegram через `getUpdates` (long polling 25 с, `allowed_updates=["callback_query"]`, offset подтверждается сразу, повторные `update_id` игнорируются). Если у бота был webhook, он снимается через `deleteWebhook`. Кнопки «Ответила», «Под вопросом» и удаление с подтверждением работают так же, как через webhook. `GET /api/health` показывает `callbacks: "polling" | "webhook" | "off"`. Отключить: `TELEGRAM_POLLING=off`.
+
+Ограничение: polling живёт, пока работает процесс. В Node-сервере он запускается при старте; на serverless-хосте цикл стартует при первом обращении к `/api/health` или `/api/booking` и живёт, пока инстанс тёплый. Для надёжности можно дёргать `POST /api/telegram/poll` по расписанию (одноразовый опрос). Если задан `TELEGRAM_WEBHOOK_SECRET`, polling не запускается (приоритет у webhook).
+
 ## Проверки и production preview
 
 ```bash
