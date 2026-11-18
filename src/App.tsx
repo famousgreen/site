@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ArrowRight, ArrowUpRight, Check, Menu, X } from 'lucide-react'
+import { About, Cases, ProjectViewer, Shoots } from './sections'
+import { extra, slugs } from './content'
+import type { CaseId } from './content'
+import { Reveal } from './Reveal'
 import { LANGS, dictionary, detectLanguage, saveLanguage } from './i18n'
 import type { Dict, Lang, ShootType } from './i18n'
 import './App.css'
 
-type ContactMethod = 'instagram' | 'email' | 'telegram' | 'whatsapp'
+const shootIds: ShootType[] = ['portrait', 'wedding', 'commercial']
 
-const shootOrder: Array<{ id: ShootType; index: string; place: string }> = [
-  { id: 'portrait', index: '01', place: '48.8566° N' },
-  { id: 'wedding', index: '02', place: '49.7072° N' },
-  { id: 'commercial', index: '03', place: '48.8589° N' },
-]
+type ContactMethod = 'instagram' | 'email' | 'telegram' | 'whatsapp'
 
 const photos = [
   { src: '/images/portfolio/portrait-paris.jpg', caption: '48.8566° N · 2.3522° E', position: '50% 40%' },
@@ -26,33 +26,6 @@ const methods: Array<{ id: ContactMethod; label: string; placeholder: string }> 
   { id: 'telegram', label: 'Telegram', placeholder: '@username' },
   { id: 'whatsapp', label: 'WhatsApp', placeholder: '+33 6 00 00 00 00' },
 ]
-
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.12 },
-    )
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [])
-
-  return (
-    <div ref={ref} className={`reveal ${visible ? 'is-visible' : ''} ${className}`}>
-      {children}
-    </div>
-  )
-}
 
 function LanguageSwitch({ lang, label, onChange }: { lang: Lang; label: string; onChange: (lang: Lang) => void }) {
   return (
@@ -74,12 +47,19 @@ function LanguageSwitch({ lang, label, onChange }: { lang: Lang; label: string; 
   )
 }
 
+const readCase = (): CaseId | null => {
+  const match = window.location.hash.match(/^#case\/([a-z]+)$/)
+  return match && (slugs as string[]).includes(match[1]) ? (match[1] as CaseId) : null
+}
+
 function App() {
   const [lang, setLang] = useState<Lang>(detectLanguage)
   const [menuOpen, setMenuOpen] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(false)
   const [bookingShoot, setBookingShoot] = useState<ShootType>('portrait')
+  const [activeCase, setActiveCase] = useState<CaseId | null>(readCase)
   const t = dictionary[lang]
+  const x = extra[lang]
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -90,6 +70,28 @@ function App() {
   const changeLanguage = (next: Lang) => {
     saveLanguage(next)
     setLang(next)
+  }
+
+  useEffect(() => {
+    const sync = () => setActiveCase(readCase())
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [])
+
+  const openCase = (id: CaseId) => {
+    window.history.pushState({ viewer: true }, '', `#case/${id}`)
+    setActiveCase(id)
+  }
+
+  const goToCase = (id: CaseId) => {
+    window.history.replaceState({ viewer: true }, '', `#case/${id}`)
+    setActiveCase(id)
+  }
+
+  const closeCase = () => {
+    setActiveCase(null)
+    if (window.history.state?.viewer) window.history.back()
+    else window.history.replaceState(null, '', '#cases')
   }
 
   const openBooking = (shoot: ShootType = 'portrait') => {
@@ -107,7 +109,9 @@ function App() {
         <div className="header-tools">
           <LanguageSwitch lang={lang} label={t.langLabel} onChange={changeLanguage} />
           <nav className="desktop-nav" aria-label="Main">
-            <a href="#work">{t.nav.work}</a>
+            <a href="#about">{x.nav.about}</a>
+            <a href="#cases">{x.nav.cases}</a>
+            <a href="#work">{x.nav.shoots}</a>
             <button type="button" onClick={() => openBooking()}>
               {t.nav.book}
             </button>
@@ -127,7 +131,9 @@ function App() {
 
       {menuOpen && (
         <nav className="mobile-menu" id="mobile-menu" aria-label="Main">
-          <a href="#work" onClick={() => setMenuOpen(false)}>{t.nav.work}</a>
+          <a href="#about" onClick={() => setMenuOpen(false)}>{x.nav.about}</a>
+          <a href="#cases" onClick={() => setMenuOpen(false)}>{x.nav.cases}</a>
+          <a href="#work" onClick={() => setMenuOpen(false)}>{x.nav.shoots}</a>
           <button type="button" onClick={() => { setMenuOpen(false); openBooking() }}>
             {t.nav.book} <ArrowRight aria-hidden="true" />
           </button>
@@ -161,24 +167,9 @@ function App() {
           </div>
         </section>
 
-        <section className="work" id="work" aria-labelledby="work-title">
-          <h2 className="label" id="work-title">{t.workLabel}</h2>
-          <ul>
-            {shootOrder.map((shoot) => (
-              <li key={shoot.id}>
-                <Reveal>
-                  <button type="button" className="shoot-row" onClick={() => openBooking(shoot.id)}>
-                    <span className="shoot-index">{shoot.index}</span>
-                    <span className="shoot-title">{t.shoots[shoot.id].name}</span>
-                    <span className="shoot-desc">{t.shoots[shoot.id].desc}</span>
-                    <span className="shoot-place">{shoot.place}</span>
-                    <ArrowUpRight className="shoot-arrow" aria-hidden="true" />
-                  </button>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <About x={x} onBook={() => openBooking()} />
+        <Cases x={x} onOpen={openCase} />
+        <Shoots t={t} x={x} onBook={openBooking} />
 
         <section className="closing">
           <Reveal>
@@ -198,6 +189,19 @@ function App() {
         </div>
         <small>{t.footer.rights}</small>
       </footer>
+
+      {activeCase && (
+        <ProjectViewer
+          x={x}
+          activeId={activeCase}
+          onClose={closeCase}
+          onNavigate={goToCase}
+          onBook={() => {
+            closeCase()
+            openBooking()
+          }}
+        />
+      )}
 
       {bookingOpen && (
         <BookingModal t={t} lang={lang} onClose={() => setBookingOpen(false)} initialShoot={bookingShoot} />
@@ -327,15 +331,15 @@ function BookingModal({
               <fieldset>
                 <legend>{m.type}</legend>
                 <div className="shoot-options">
-                  {shootOrder.map((shoot) => (
+                  {shootIds.map((id) => (
                     <button
                       type="button"
-                      key={shoot.id}
-                      aria-pressed={shootType === shoot.id}
-                      className={shootType === shoot.id ? 'selected' : ''}
-                      onClick={() => setShootType(shoot.id)}
+                      key={id}
+                      aria-pressed={shootType === id}
+                      className={shootType === id ? 'selected' : ''}
+                      onClick={() => setShootType(id)}
                     >
-                      {t.shoots[shoot.id].short}
+                      {t.shoots[id].short}
                     </button>
                   ))}
                 </div>

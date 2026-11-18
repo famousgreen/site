@@ -62,7 +62,7 @@ test('name, structure and typography', async ({ page }) => {
   await page.goto(url)
   await expect(page.getByRole('heading', { level: 1, name: 'Hanna Chauvat' })).toBeVisible()
   await expect(page.locator('.photo')).toHaveCount(4)
-  await expect(page.locator('.shoot-row')).toHaveCount(3)
+  await expect(page.locator('.acc-item')).toHaveCount(3)
   await expect(page.getByText(/Alina|Moreau|Jeanna/)).toHaveCount(0)
 
   const fonts = await page.evaluate(() => {
